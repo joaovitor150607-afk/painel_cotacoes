@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Cotações</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            color: #202938;
+            background: #f5f7fb;
+        }
+        main {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 18px rgba(0,0,0,.07);
+        }
+        h1 { margin-top: 0; }
+        .ok, .erro {
+            padding: 12px 14px;
+            border-radius: 7px;
+            margin: 1rem 0;
+        }
+        .ok { background: #d4edda; color: #155724; }
+        .erro { background: #f8d7da; color: #721c24; }
+        .acao {
+            display: inline-block;
+            background: #2457d6;
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            border-radius: 7px;
+            margin: .5rem 0 1rem;
+        }
+        .tabela-wrap { overflow-x: auto; }
+        table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+        th, td { border: 1px solid #d9deea; padding: 10px; text-align: left; }
+        th { background: #edf1f8; }
+        #status-historico { color: #596579; }
+        footer { margin-top: 1rem; color: #697386; font-size: .85rem; }
+    </style>
+</head>
+<body>
+<main>
+    <h1>Painel de Cotações</h1>
+
+    {% if sucesso %}
+        <div class="ok">
+            Cotação registrada:
+            <strong>{{ registro.moeda_origem }}/{{ registro.moeda_destino }} = R$ {{ registro.valor }}</strong>
+        </div>
+    {% elif erro %}
+        <div class="erro">{{ erro }}</div>
+    {% endif %}
+
+    <a class="acao" href="{% url 'consultar' %}">Consultar novamente</a>
+
+    <h2>Histórico de consultas</h2>
+    <p id="status-historico">Carregando histórico...</p>
+
+    <div class="tabela-wrap">
+        <table id="tabela-historico" hidden>
+            <thead>
+                <tr><th>Par</th><th>Valor</th><th>Data/Hora</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <footer>Dados consultados na AwesomeAPI. O histórico é armazenado localmente neste projeto.</footer>
+</main>
+
+<script>
+    const status = document.getElementById("status-historico");
+    const tabela = document.getElementById("tabela-historico");
+    const corpo = tabela.querySelector("tbody");
+
+    fetch("/api/historico/")
+        .then(function (resposta) {
+            if (!resposta.ok) {
+                throw new Error("HTTP " + resposta.status);
+            }
+            return resposta.json();
+        })
+        .then(function (registros) {
+            if (registros.length === 0) {
+                status.textContent = "Nenhuma consulta registrada ainda.";
+                return;
+            }
+
+            registros.forEach(function (r) {
+                const linha = document.createElement("tr");
+                const dados = [
+                    r.moeda_origem + "/" + r.moeda_destino,
+                    "R$ " + r.valor,
+                    new Date(r.data_hora_consulta).toLocaleString("pt-BR")
+                ];
+
+                dados.forEach(function (texto) {
+                    const celula = document.createElement("td");
+                    celula.textContent = texto;
+                    linha.appendChild(celula);
+                });
+
+                corpo.appendChild(linha);
+            });
+
+            status.hidden = true;
+            tabela.hidden = false;
+        })
+        .catch(function (erro) {
+            status.textContent = "Não foi possível carregar o histórico. Verifique sua conexão.";
+            console.error("Falha ao buscar histórico:", erro);
+        });
+</script>
+</body>
+</html>
